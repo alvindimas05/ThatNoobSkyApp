@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="sunset">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>That Noob Sky Mod</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"
+        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/components/input.css,npm/daisyui@5/components/checkbox.css,npm/daisyui@5/components/button.css,npm/daisyui@5/theme/sunset.css" rel="stylesheet" type="text/css" />
+    <style>
+        * {
+            font-family: 'Inter', 'sans-serif';
+        }
+    </style>
+    <script>
+        const baseUrl = "http://localhost:7253";
+        $(() => {
+            $('#btn-ping').click(async () => {
+                try {
+                    const res = await $.get(`${baseUrl}/ping`);
+                    $('#ping-response').html('Pong');
+                } catch (err) {
+                    console.error(err);
+                    $('#ping-response').html('Error');
+                }
+            });
+            $('#btn-teleport').click(async () => {
+                try {
+                    // Read input values
+                    const x = parseFloat($('#input-teleport-x').val());
+                    const y = parseFloat($('#input-teleport-y').val());
+                    const z = parseFloat($('#input-teleport-z').val());
+
+                    if (isNaN(x) || isNaN(y) || isNaN(z)) {
+                        $('#teleport-response').html('Invalid coordinates');
+                        return;
+                    }
+
+                    const url = new URL(`${baseUrl}/teleport`);
+                    url.searchParams.append('x', x);
+                    url.searchParams.append('x', y);
+                    url.searchParams.append('x', z);
+
+                    const response = await $.get(url.toString());
+
+                    $('#teleport-response').html(`Teleported to ${x}, ${y}, ${z}`);
+                } catch (err) {
+                    console.error(err);
+                    $('#teleport-response').html('Error');
+                }
+            });
+
+        });
+    </script>
+</head>
+
+<body>
+    <div class="container mx-auto">
+        <p class="text-2xl font-semibold mt-2">That Noob Sky Mod</p>
+        <!-- Start Ping -->
+        <div class="grid grid-cols-[min-content_min-content] gap-x-3 mt-2">
+            <button id="btn-ping" class="btn btn-neutral">Ping</button>
+            <div id="ping-response" class="grid items-center font-semibold"></div>
+        </div>
+        <!-- End Ping -->
+        <!-- Start Teleport -->
+        <div class="mt-2">
+            <p class="text-lg font-semibold">Teleporter</p>
+            <div class="w-fit grid grid-cols-[repeat(3,auto)] gap-x-3">
+                <div class="w-20">
+                    <input id="input-teleport-x" class="w-full input input-neutral" type="number" placeholder="X" value="0" autocomplete="off">
+                </div>
+                <div class="w-20">
+                    <input id="input-teleport-y" class="w-full input input-neutral" type="number" placeholder="Y" value="0" autocomplete="off">
+                </div>
+                <div class="w-20">
+                    <input id="input-teleport-z" class="w-full input input-neutral" type="number" placeholder="Z" value="0" autocomplete="off">
+                </div>
+            </div>
+            <div class="grid grid-cols-[repeat(2,max-content)] gap-x-3">
+                <button id="btn-teleport" class="btn btn-primary mt-2">Teleport</button>
+                <div id="teleport-response" class="grid items-center font-semibold"></div>
+            </div>
+        </div>
+        <!-- End Teleport -->
+    </div>
+</body>
+
+</html>
