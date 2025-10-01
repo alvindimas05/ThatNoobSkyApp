@@ -8,12 +8,16 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+        rel="stylesheet">
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"
         integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/components/input.css,npm/daisyui@5/components/checkbox.css,npm/daisyui@5/components/button.css,npm/daisyui@5/theme/sunset.css" rel="stylesheet" type="text/css" />
+    <link
+        href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/components/input.css,npm/daisyui@5/components/checkbox.css,npm/daisyui@5/components/button.css,npm/daisyui@5/components/select.css,npm/daisyui@5/theme/sunset.css"
+        rel="stylesheet" type="text/css" />
     <style>
         * {
             font-family: 'Inter', 'sans-serif';
@@ -21,7 +25,89 @@
     </style>
     <script>
         const baseUrl = "http://localhost:7253";
+        const levelCategories = [
+            {
+                name: 'Home',
+                levels: ['CandleSpace', 'MainStreet'],
+            },
+            {
+                name: 'Isle of Dawn',
+                levels: ['Dawn', 'DawnCave'],
+            },
+        ];
+        const progressionLevels = [
+            {
+                name: 'MainStreet',
+                positions: [
+                    [52.42, 217.12, -111.30],
+                    [48.49, 216.89, -101.82],
+                    [48.49, 216.89, -101.82],
+                    [52.38, 217.92, -97.73],
+                    [39.26, 217.81, -86.40],
+                    [42.61, 217, -80.89],
+                    [38.08, 217.13, -64.83],
+                    [31.91, 217, -67.96],
+                    [7.38, 213.8, -35.63],
+                ],
+            },
+        ];
+        let gameInfo = null;
+    </script>
+    <script>
+        function initializeLevelCategories() {
+            $('#select-level-category').html(
+                levelCategories.map(category => `<option value="${category.name}">${category.name}</option>`).join()
+            ).change(updateLevelLevels);
+        }
+        function updateLevelLevels(){
+            $('#select-level-level').html(
+                levelCategories.find(category => category.name === $('#select-level-category').find(':selected').val())
+                    .levels.map(level => `<option value="${level}">${level}</option>`)
+            );
+        }
+        async function updateCurrentLevel(){
+            const res = await $.get(`${baseUrl}/info`);
+            if(gameInfo === null || gameInfo.currentLevel !== res.currentLevel){
+                gameInfo = {
+                    currentLevel: res.currentLevel,
+                };
+                $('#current-level').text(res.currentLevel);
+                updateProgressionPositions();
+            }
+        }
+        async function updateProgressionPositions(){
+            if(!gameInfo || gameInfo.currentLevel === 'None'){
+                $('#progression-positions').html('');
+                return;
+            }
+            try {
+                $('#progression-positions').html(progressionLevels.find(level => level.name === gameInfo.currentLevel).positions
+                    .map((position, index) => `
+                        <button class="btn btn-primary grid items-center justify-center aspect-square bg-primary rounded border !font-bold"
+                            onclick="goToProgression('${gameInfo.currentLevel}', ${index})">${index + 1}</button>
+                    `).join(''));
+            } catch(err){
+                $('#progression-positions').html('');
+                // console.error(err);
+            }
+        }
+        async function goToProgression(levelName, index){
+            const [x, y, z] = progressionLevels.find(level => level.name === levelName).positions[index];
+            await requestTeleport(x, y, z);
+        }
+        async function requestTeleport(x, y, z){
+            const url = new URL(`${baseUrl}/teleport`);
+            url.searchParams.append('x', x);
+            url.searchParams.append('y', y);
+            url.searchParams.append('z', z);
+
+            await $.get(url.toString());
+        }
         $(() => {
+            // initializeLevelCategories();
+            // updateLevelLevels();
+            updateCurrentLevel();
+            setInterval(updateCurrentLevel, 1000);
             $('#btn-ping').click(async () => {
                 try {
                     const res = await $.get(`${baseUrl}/ping`);
@@ -43,12 +129,7 @@
                         return;
                     }
 
-                    const url = new URL(`${baseUrl}/teleport`);
-                    url.searchParams.append('x', x);
-                    url.searchParams.append('x', y);
-                    url.searchParams.append('x', z);
-
-                    const response = await $.get(url.toString());
+                    requestTeleport(x, y, z);
 
                     $('#teleport-response').html(`Teleported to ${x}, ${y}, ${z}`);
                 } catch (err) {
@@ -56,40 +137,76 @@
                     $('#teleport-response').html('Error');
                 }
             });
-
         });
     </script>
 </head>
 
 <body>
     <div class="container mx-auto">
-        <p class="text-2xl font-semibold mt-2">That Noob Sky Mod</p>
-        <!-- Start Ping -->
-        <div class="grid grid-cols-[min-content_min-content] gap-x-3 mt-2">
-            <button id="btn-ping" class="btn btn-neutral">Ping</button>
-            <div id="ping-response" class="grid items-center font-semibold"></div>
-        </div>
-        <!-- End Ping -->
-        <!-- Start Teleport -->
-        <div class="mt-2">
-            <p class="text-lg font-semibold">Teleporter</p>
-            <div class="w-fit grid grid-cols-[repeat(3,auto)] gap-x-3">
-                <div class="w-20">
-                    <input id="input-teleport-x" class="w-full input input-neutral" type="number" placeholder="X" value="0" autocomplete="off">
+        <div class="grid grid-cols-[max-content_auto] gap-x-3">
+            <p class="text-2xl font-semibold mt-2">That Noob Sky Mod</p>
+            <div class="grid items-center justify-end">
+                <!-- Start Ping -->
+                <div class="grid grid-cols-[min-content_min-content] gap-x-3 mt-2">
+                    <div id="ping-response" class="grid items-center font-semibold"></div>
+                    <button id="btn-ping" class="btn btn-neutral">Ping</button>
                 </div>
-                <div class="w-20">
-                    <input id="input-teleport-y" class="w-full input input-neutral" type="number" placeholder="Y" value="0" autocomplete="off">
-                </div>
-                <div class="w-20">
-                    <input id="input-teleport-z" class="w-full input input-neutral" type="number" placeholder="Z" value="0" autocomplete="off">
-                </div>
-            </div>
-            <div class="grid grid-cols-[repeat(2,max-content)] gap-x-3">
-                <button id="btn-teleport" class="btn btn-primary mt-2">Teleport</button>
-                <div id="teleport-response" class="grid items-center font-semibold"></div>
+                <!-- End Ping -->
             </div>
         </div>
-        <!-- End Teleport -->
+        <div class="grid grid-cols-2">
+            <div>
+                <!-- Start Teleport -->
+                <div class="mt-2">
+                    <p class="text-lg font-semibold">Teleporter</p>
+                    <div class="w-fit grid grid-cols-[repeat(3,auto)] gap-x-3 mt-2">
+                        <div class="w-20">
+                            <input id="input-teleport-x" class="w-full input input-neutral" type="number"
+                                placeholder="X" value="0" autocomplete="off">
+                        </div>
+                        <div class="w-20">
+                            <input id="input-teleport-y" class="w-full input input-neutral" type="number"
+                                placeholder="Y" value="0" autocomplete="off">
+                        </div>
+                        <div class="w-20">
+                            <input id="input-teleport-z" class="w-full input input-neutral" type="number"
+                                placeholder="Z" value="0" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-[repeat(2,max-content)] gap-x-3">
+                        <button id="btn-teleport" class="btn btn-primary mt-2">Teleport</button>
+                        <div id="teleport-response" class="grid items-center font-semibold"></div>
+                    </div>
+                </div>
+                <!-- End Teleport -->
+            </div>
+            <div>
+                <!-- Start Progression -->
+                <div>
+                    <div class="grid grid-cols-2 mt-2">
+                        <p class="text-lg font-semibold">Progression</p>
+                        <p class="font-medium text-end">Current Level : <span id="current-level">None</span></p>
+                    </div>
+                    <div id="progression-positions" class="grid grid-cols-12 gap-5 mt-2"></div>
+                </div>
+                <!-- End Progression -->
+                <!-- Start Level Loader -->
+                <!-- <div class="mt-2">
+                    <p class="text-lg font-semibold">Level Loader</p>
+                    <div class="grid grid-cols-2 gap-x-3 mt-2">
+                        <div>
+                            <p class="font-medium">Category</p>
+                            <select id="select-level-category" class="select mt-2"></select>
+                        </div>
+                        <div>
+                            <p class="font-medium">Level</p>
+                            <select id="select-level-level" class="select mt-2"></select>
+                        </div>
+                    </div>
+                </div> -->
+                <!-- End Level Loader -->
+            </div>
+        </div>
     </div>
 </body>
 
