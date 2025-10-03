@@ -52,8 +52,8 @@
             {
                 name: 'Valley of Triumph',
                 levels: [
-                    'Sunset', 'SunsetRace', 'Sunset_Citadel', 'Sunset_FlyRace', 'SunsetColosseum', 'SunsetEnd2', 'SunsetVillage', 'Sunset_Theater', 'SunsetVillage_MusicShop', 'Sunset_YetiPark',
-                    'Event_Arr_Runaway', 'Event_Arr_SoftInside', 'Event_Cinema',
+                    'Sunset', 'SunsetRace', 'Sunset_Citadel', 'Sunset_FlyRace', 'SunsetColosseum', 'SunsetEnd2', 'SunsetVillage', 'Sunset_Theater',
+                    'SunsetVillage_MusicShop', 'Sunset_YetiPark', 'Event_Cinema',
                 ],
             },
             {
@@ -73,11 +73,11 @@
             },
             {
                 name: 'Aurora',
-                levels: ['Event_Arr_Warrior', 'Event_Arr_TheSeed', 'Event_Arr_EyesOfAChild', 'Event_Arr_ExhaleInhale'],
+                levels: ['Event_Arr_Runaway', 'Event_Arr_SoftInside', 'Event_Arr_Warrior', 'Event_Arr_TheSeed', 'Event_Arr_EyesOfAChild', 'Event_Arr_ExhaleInhale'],
             },
             {
                 name: 'The Little Prince',
-                levels: ['NightDesert', 'NightDesert_Beach', 'Night_JarCave', 'Night_InfiniteDesert',  'NightDesert_Planets'],
+                levels: ['NightDesert', 'NightDesert_Beach', 'Night_JarCave', 'Night_InfiniteDesert', 'NightDesert_Planets'],
             },
             {
                 name: 'Nine-Colored Deer',
@@ -199,6 +199,7 @@
         const teleportCooldown = 5;
         let gameInfo = null;
         let canTeleport = true;
+        let autoBurnCandles = false;
     </script>
     <script>
         function initializeLevelCategories() {
@@ -213,13 +214,20 @@
             );
         }
         async function updateCurrentLevel() {
-            const res = await $.get(`${baseUrl}/info`);
-            if (gameInfo === null || gameInfo.currentLevel !== res.currentLevel) {
-                gameInfo = {
-                    currentLevel: res.currentLevel,
-                };
-                $('#current-level').text(res.currentLevel);
-                updateProgressionPositions();
+            try {
+                const res = await $.get(`${baseUrl}/info`);
+                if (gameInfo === null || gameInfo.currentLevel !== res.currentLevel) {
+                    gameInfo = {
+                        currentLevel: res.currentLevel,
+                    };
+                    $('#current-level').text(res.currentLevel);
+                    updateProgressionPositions();
+                }
+            } catch(err){
+                gameInfo = null;
+                $('#current-level').text('None');
+                updateProgressionPositions()
+                console.error(err);
             }
         }
         async function updateProgressionPositions() {
@@ -262,7 +270,7 @@
             const element = $('#label-teleport-cooldown');
             let cooldown = teleportCooldown;
 
-            element.html('Teleport Cooldown: ' + cooldown);
+            element.html('Teleport Cooldown : ' + cooldown);
             const interval = setInterval(() => {
                 cooldown--;
                 if(cooldown <= 0){
@@ -271,59 +279,72 @@
                     element.html('');
                     return;
                 }
-                element.html('Teleport Cooldown: ' + cooldown);
+                element.html('Teleport Cooldown : ' + cooldown);
             }, 1000);
+        }
+        async function handleButtonPing(){
+            try {
+                const res = await $.get(`${baseUrl}/ping`);
+                $('#ping-response').html('Pong');
+            } catch (err) {
+                console.error(err);
+                $('#ping-response').html('Error');
+            }
+        }
+        async function handleButtonTeleport(){
+            try {
+                const x = parseFloat($('#input-teleport-x').val());
+                const y = parseFloat($('#input-teleport-y').val());
+                const z = parseFloat($('#input-teleport-z').val());
+
+                if (isNaN(x) || isNaN(y) || isNaN(z)) {
+                    $('#teleport-response').html('Invalid coordinates');
+                    return;
+                }
+
+                requestTeleport(x, y, z);
+
+                $('#teleport-response').html(`Teleported to ${x}, ${y}, ${z}`);
+            } catch (err) {
+                console.error(err);
+                $('#teleport-response').html('Error');
+            }
+        }
+        async function handleButtonLoadLevel(){
+            if(!canTeleport) return;
+            canTeleport = false;
+
+            try {
+                const level = $('#select-level-level').find(':selected').val();
+                const url = new URL(`${baseUrl}/level`);
+                url.searchParams.append('name', level);
+                url.searchParams.append('fade', $('#checkbox-level-fade').is(':checked') ? 'true' : 'false');
+                await $.get(url.toString());
+            } catch(err){
+                console.error(err);
+            }
+
+            startTeleportCooldown();
+        }
+        async function handleAutoBurnCandlesChange(){
+            try {
+                const url = new URL(`${baseUrl}/auto-burn-candles`);
+                url.searchParams.append('enable', $(this).is(':checked') ? 'true' : 'false');
+                await $.get(url.toString());
+            } catch(err){
+                $(this).prop('checked', false);
+                console.error(err);
+            }
         }
         $(() => {
             initializeLevelCategories();
             updateLevelLevels();
             updateCurrentLevel();
             setInterval(updateCurrentLevel, 1000);
-            $('#btn-ping').click(async () => {
-                try {
-                    const res = await $.get(`${baseUrl}/ping`);
-                    $('#ping-response').html('Pong');
-                } catch (err) {
-                    console.error(err);
-                    $('#ping-response').html('Error');
-                }
-            });
-            $('#btn-teleport').click(async () => {
-                try {
-                    // Read input values
-                    const x = parseFloat($('#input-teleport-x').val());
-                    const y = parseFloat($('#input-teleport-y').val());
-                    const z = parseFloat($('#input-teleport-z').val());
-
-                    if (isNaN(x) || isNaN(y) || isNaN(z)) {
-                        $('#teleport-response').html('Invalid coordinates');
-                        return;
-                    }
-
-                    requestTeleport(x, y, z);
-
-                    $('#teleport-response').html(`Teleported to ${x}, ${y}, ${z}`);
-                } catch (err) {
-                    console.error(err);
-                    $('#teleport-response').html('Error');
-                }
-            });
-            $('#btn-load-level').click(async () => {
-                if(!canTeleport) return;
-                canTeleport = false;
-
-                try {
-                    const level = $('#select-level-level').find(':selected').val();
-                    const url = new URL(`${baseUrl}/level`);
-                    url.searchParams.append('name', level);
-                    url.searchParams.append('fade', $('#checkbox-level-fade').is(':checked') ? 'true' : 'false');
-                    await $.get(url.toString());
-                } catch(err){
-                    console.error(err);
-                }
-
-                startTeleportCooldown();
-            });
+            $('#btn-ping').click(handleButtonPing);
+            $('#btn-teleport').click(handleButtonTeleport);
+            $('#btn-load-level').click(handleButtonLoadLevel);
+            $('#checkbox-auto-burn-candles').change(handleAutoBurnCandlesChange);
         });
     </script>
 </head>
@@ -331,7 +352,10 @@
 <body>
     <div class="container mx-auto">
         <div class="grid grid-cols-[max-content_auto] gap-x-3">
-            <p class="text-2xl font-semibold mt-2">That Noob Sky Mod</p>
+            <div>
+                <p class="text-2xl font-semibold mt-2">That Noob Sky Mod</p>
+                <p>This mod is unstable.</p>
+            </div>
             <div class="grid items-center justify-end">
                 <!-- Start Ping -->
                 <!-- <div class="grid grid-cols-[min-content_min-content] gap-x-3 mt-2">
@@ -381,7 +405,7 @@
                         </div>
                     </div>
                     <div class="mt-2 flex items-center gap-x-3">
-                        <input id="checkbox-level-fade" class="checkbox" type="checkbox" checked> <span>Enable Fade Effect</span>
+                        <input id="checkbox-level-fade" class="checkbox" type="checkbox" checked autocomplete="off"> <span>Enable Fade Effect</span>
                     </div>
                     <button id="btn-load-level" class="btn btn-primary mt-4">Load Level</button>
                 </div>
@@ -390,11 +414,15 @@
             <div>
                 <!-- Start Progression -->
                 <div>
-                    <div class="grid grid-cols-2 mt-2">
+                    <div class="grid grid-cols-[min-content_auto] mt-2 gap-x-3">
                         <p class="text-lg font-semibold">Progression</p>
                         <p class="font-medium text-end">Current Level : <span id="current-level">None</span></p>
                     </div>
-                    <div id="progression-positions" class="grid md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 md:gap-2 lg:gap-5 mt-2"></div>
+                    <div class="mt-2 flex items-center gap-x-3">
+                        <input id="checkbox-auto-burn-candles" class="checkbox" type="checkbox" autocomplete="off"> <span>Auto Burn Candles</span>
+                    </div>
+                    <p class="font-medium mt-2">Semi CR</p>
+                    <div id="progression-positions" class="grid grid-cols-10 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 md:gap-2 lg:gap-5 mt-2"></div>
                 </div>
                 <!-- End Progression -->
             </div>
