@@ -65,7 +65,7 @@
             },
             {
                 name: 'Vault of Knowledge',
-                levels: ['Night', 'Night2', 'NightEnd',  'NightArchive', 'NightShelter', 'Night_IPHallway'],
+                levels: ['Night', 'Night2', 'NightEnd', 'NightArchive', 'NightShelter', 'Night_IPHallway'],
             },
             {
                 name: 'Eye of Eden',
@@ -223,7 +223,7 @@
                     $('#current-level').text(res.currentLevel);
                     updateProgressionPositions();
                 }
-            } catch(err){
+            } catch (err) {
                 gameInfo = null;
                 $('#current-level').text('None');
                 updateProgressionPositions()
@@ -251,8 +251,6 @@
             await requestTeleport(x, y, z);
         }
         async function requestTeleport(x, y, z) {
-            if (!canTeleport) return;
-            canTeleport = false;
             try {
                 const url = new URL(`${baseUrl}/teleport`);
                 url.searchParams.append('x', x);
@@ -260,20 +258,18 @@
                 url.searchParams.append('z', z);
 
                 await $.get(url.toString());
-            } catch(err){
+            } catch (err) {
                 console.error(err);
             }
-
-            startTeleportCooldown();
         }
-        async function startTeleportCooldown(){
+        async function startTeleportCooldown() {
             const element = $('#label-teleport-cooldown');
             let cooldown = teleportCooldown;
 
             element.html('Teleport Cooldown : ' + cooldown);
             const interval = setInterval(() => {
                 cooldown--;
-                if(cooldown <= 0){
+                if (cooldown <= 0) {
                     canTeleport = true;
                     clearInterval(interval);
                     element.html('');
@@ -282,7 +278,7 @@
                 element.html('Teleport Cooldown : ' + cooldown);
             }, 1000);
         }
-        async function handleButtonPing(){
+        async function handleButtonPing() {
             try {
                 const res = await $.get(`${baseUrl}/ping`);
                 $('#ping-response').html('Pong');
@@ -291,7 +287,7 @@
                 $('#ping-response').html('Error');
             }
         }
-        async function handleButtonTeleport(){
+        async function handleButtonTeleport() {
             try {
                 const x = parseFloat($('#input-teleport-x').val());
                 const y = parseFloat($('#input-teleport-y').val());
@@ -310,28 +306,43 @@
                 $('#teleport-response').html('Error');
             }
         }
-        async function handleButtonLoadLevel(){
-            if(!canTeleport) return;
-            canTeleport = false;
-
+        async function handleButtonLoadLevel() {
             try {
                 const level = $('#select-level-level').find(':selected').val();
                 const url = new URL(`${baseUrl}/level`);
                 url.searchParams.append('name', level);
                 url.searchParams.append('fade', $('#checkbox-level-fade').is(':checked') ? 'true' : 'false');
                 await $.get(url.toString());
-            } catch(err){
+            } catch (err) {
                 console.error(err);
             }
-
-            startTeleportCooldown();
         }
-        async function handleAutoBurnCandlesChange(){
+        async function handleAutoBurnCandlesChange() {
             try {
                 const url = new URL(`${baseUrl}/auto-burn-candles`);
                 url.searchParams.append('enable', $(this).is(':checked') ? 'true' : 'false');
                 await $.get(url.toString());
-            } catch(err){
+            } catch (err) {
+                $(this).prop('checked', false);
+                console.error(err);
+            }
+        }
+        async function handleAutoBurnPlantsChange() {
+            try {
+                const url = new URL(`${baseUrl}/auto-burn-plants`);
+                url.searchParams.append('enable', $(this).is(':checked') ? 'true' : 'false');
+                await $.get(url.toString());
+            } catch (err) {
+                $(this).prop('checked', false);
+                console.error(err);
+            }
+        }
+        async function handleAutoBurnDyesChange() {
+            try {
+                const url = new URL(`${baseUrl}/auto-burn-dyes`);
+                url.searchParams.append('enable', $(this).is(':checked') ? 'true' : 'false');
+                await $.get(url.toString());
+            } catch (err) {
                 $(this).prop('checked', false);
                 console.error(err);
             }
@@ -345,6 +356,8 @@
             $('#btn-teleport').click(handleButtonTeleport);
             $('#btn-load-level').click(handleButtonLoadLevel);
             $('#checkbox-auto-burn-candles').change(handleAutoBurnCandlesChange);
+            $('#checkbox-auto-burn-plants').change(handleAutoBurnPlantsChange);
+            $('#checkbox-auto-burn-dyes').change(handleAutoBurnDyesChange);
         });
     </script>
 </head>
@@ -363,7 +376,7 @@
                     <button id="btn-ping" class="btn btn-neutral">Ping</button>
                 </div> -->
                 <!-- End Ping -->
-                 <div id="label-teleport-cooldown" class="font-bold text-lg"></div>
+                <div id="label-teleport-cooldown" class="font-bold text-lg"></div>
             </div>
         </div>
         <div class="grid md:grid-cols-[20rem_auto] lg:grid-cols-[30rem_auto] xl:grid-cols-[35rem_auto] gap-x-4">
@@ -405,7 +418,8 @@
                         </div>
                     </div>
                     <div class="mt-2 flex items-center gap-x-3">
-                        <input id="checkbox-level-fade" class="checkbox" type="checkbox" checked autocomplete="off"> <span>Enable Fade Effect</span>
+                        <input id="checkbox-level-fade" class="checkbox" type="checkbox" checked autocomplete="off">
+                        <span>Enable Fade Effect</span>
                     </div>
                     <button id="btn-load-level" class="btn btn-primary mt-4">Load Level</button>
                 </div>
@@ -418,11 +432,24 @@
                         <p class="text-lg font-semibold">Progression</p>
                         <p class="font-medium text-end">Current Level : <span id="current-level">None</span></p>
                     </div>
-                    <div class="mt-2 flex items-center gap-x-3">
-                        <input id="checkbox-auto-burn-candles" class="checkbox" type="checkbox" autocomplete="off"> <span>Auto Burn Candles</span>
+                    <div class="mt-2 grid gap-y-2">
+                        <div class="flex items-center gap-x-3">
+                            <input id="checkbox-auto-burn-candles" class="checkbox" type="checkbox" autocomplete="off">
+                            <span>Auto Burn Candles</span>
+                        </div>
+                        <div class="flex items-center gap-x-3">
+                            <input id="checkbox-auto-burn-plants" class="checkbox" type="checkbox" autocomplete="off">
+                            <span>Auto Burn Plants</span>
+                        </div>
+                        <div class="flex items-center gap-x-3">
+                            <input id="checkbox-auto-burn-dyes" class="checkbox" type="checkbox" autocomplete="off">
+                            <span>Auto Burn Dyes</span>
+                        </div>
                     </div>
                     <p class="font-medium mt-2">Semi CR</p>
-                    <div id="progression-positions" class="grid grid-cols-10 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 md:gap-2 lg:gap-5 mt-2"></div>
+                    <div id="progression-positions"
+                        class="grid grid-cols-10 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-3 md:gap-2 lg:gap-5 mt-2">
+                    </div>
                 </div>
                 <!-- End Progression -->
             </div>
