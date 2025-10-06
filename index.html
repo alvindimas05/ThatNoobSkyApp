@@ -11,16 +11,34 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
         rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"
         integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link
-        href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/components/input.css,npm/daisyui@5/components/checkbox.css,npm/daisyui@5/components/button.css,npm/daisyui@5/components/select.css,npm/daisyui@5/theme/sunset.css"
-        rel="stylesheet" type="text/css" />
     <style>
         * {
             font-family: 'Inter', 'sans-serif';
+        }
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .status-indicator {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
     </style>
     <script>
@@ -218,15 +236,17 @@
                 const res = await $.get(`${baseUrl}/info`);
                 if (gameInfo === null || gameInfo.currentLevel !== res.currentLevel) {
                     gameInfo = {
-                        currentLevel: res.currentLevel,
+                        currentLevel: res.currentLevel ?? 'None',
                     };
-                    $('#current-level').text(res.currentLevel);
+                    $('#current-level').text(gameInfo.currentLevel);
                     updateProgressionPositions();
+                    $('#badge-mod-status').html('Online').removeClass('badge-neutral').addClass('badge-success');
                 }
             } catch (err) {
                 gameInfo = null;
                 $('#current-level').text('None');
-                updateProgressionPositions()
+                updateProgressionPositions();
+                $('#badge-mod-status').html('Offline').removeClass('badge-success').addClass('badge-neutral');
                 console.error(err);
             }
         }
@@ -238,12 +258,13 @@
             try {
                 $('#progression-positions').html(progressionLevels.find(level => level.name === gameInfo.currentLevel).positions
                     .map((position, index) => `
-                        <button class="btn btn-primary grid items-center justify-center aspect-square bg-primary rounded border !font-bold"
-                            onclick="goToProgression('${gameInfo.currentLevel}', ${index})">${index + 1}</button>
+                        <button class="btn btn-sm btn-primary aspect-square p-0 font-bold hover:scale-110 transition-transform"
+                            onclick="goToProgression('${gameInfo.currentLevel}', ${index})" title="Position ${index + 1}">
+                            <i class="fas fa-map-pin"></i>
+                        </button>
                     `).join(''));
             } catch (err) {
                 $('#progression-positions').html('');
-                // console.error(err);
             }
         }
         async function goToProgression(levelName, index) {
@@ -266,7 +287,7 @@
             const element = $('#label-teleport-cooldown');
             let cooldown = teleportCooldown;
 
-            element.html('Teleport Cooldown : ' + cooldown);
+            element.html('<i class="fas fa-clock"></i> Cooldown: ' + cooldown + 's');
             const interval = setInterval(() => {
                 cooldown--;
                 if (cooldown <= 0) {
@@ -275,16 +296,16 @@
                     element.html('');
                     return;
                 }
-                element.html('Teleport Cooldown : ' + cooldown);
+                element.html('<i class="fas fa-clock"></i> Cooldown: ' + cooldown + 's');
             }, 1000);
         }
         async function handleButtonPing() {
             try {
                 const res = await $.get(`${baseUrl}/ping`);
-                $('#ping-response').html('Pong');
+                $('#ping-response').html('<i class="fas fa-check text-success"></i> Pong');
             } catch (err) {
                 console.error(err);
-                $('#ping-response').html('Error');
+                $('#ping-response').html('<i class="fas fa-times text-error"></i> Error');
             }
         }
         async function handleButtonTeleport() {
@@ -294,16 +315,17 @@
                 const z = parseFloat($('#input-teleport-z').val());
 
                 if (isNaN(x) || isNaN(y) || isNaN(z)) {
-                    $('#teleport-response').html('Invalid coordinates');
+                    $('#teleport-response').html('<i class="fas fa-exclamation-triangle text-warning"></i> Invalid');
                     return;
                 }
 
                 requestTeleport(x, y, z);
 
-                $('#teleport-response').html(`Teleported to ${x}, ${y}, ${z}`);
+                $('#teleport-response').html('<i class="fas fa-check-circle text-success"></i> Teleported!');
+                setTimeout(() => $('#teleport-response').html(''), 3000);
             } catch (err) {
                 console.error(err);
-                $('#teleport-response').html('Error');
+                $('#teleport-response').html('<i class="fas fa-times text-error"></i> Error');
             }
         }
         async function handleButtonLoadLevel() {
@@ -362,97 +384,196 @@
     </script>
 </head>
 
-<body>
-    <div class="container mx-auto">
-        <div class="grid grid-cols-[max-content_auto] gap-x-3">
-            <div>
-                <p class="text-2xl font-semibold mt-2">That Noob Sky Mod</p>
-                <p>This mod is unstable.</p>
-            </div>
-            <div class="grid items-center justify-end">
-                <!-- Start Ping -->
-                <!-- <div class="grid grid-cols-[min-content_min-content] gap-x-3 mt-2">
-                    <div id="ping-response" class="grid items-center font-semibold"></div>
-                    <button id="btn-ping" class="btn btn-neutral">Ping</button>
-                </div> -->
-                <!-- End Ping -->
-                <div id="label-teleport-cooldown" class="font-bold text-lg"></div>
+<body class="p-4 md:p-6">
+    <div class="container mx-auto max-w-7xl">
+        <!-- Header Section -->
+        <div class="glass-card p-6 mb-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <div>
+                        <h1 class="text-3xl font-bold text-primary">
+                            That Noob Sky Mod
+                        </h1>
+                        <div class="flex items-center gap-2 mt-2">
+                            <div class="badge badge-warning gap-2">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Unstable
+                            </div>
+                            <div id="badge-mod-status" class="badge badge-neutral gap-2">
+                                Offline
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Cooldown Display -->
+                <div id="label-teleport-cooldown" class="text-lg font-bold text-warning"></div>
             </div>
         </div>
-        <div class="grid md:grid-cols-[20rem_auto] lg:grid-cols-[30rem_auto] xl:grid-cols-[35rem_auto] gap-x-4">
-            <div>
-                <!-- Start Teleport -->
-                <div class="mt-2">
-                    <p class="text-lg font-semibold">Teleporter</p>
-                    <div class="w-fit grid grid-cols-[repeat(3,auto)] gap-x-3 mt-2">
-                        <div class="w-20">
-                            <input id="input-teleport-x" class="w-full input input-neutral" type="number"
-                                placeholder="X" value="0" autocomplete="off">
+
+        <!-- Main Content Grid -->
+        <div class="grid lg:grid-cols-2 gap-6">
+            <!-- Left Column -->
+            <div class="space-y-6">
+                <!-- Teleporter Card -->
+                <div class="glass-card p-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                            <i class="fas fa-location-arrow text-primary text-xl"></i>
                         </div>
-                        <div class="w-20">
-                            <input id="input-teleport-y" class="w-full input input-neutral" type="number"
-                                placeholder="Y" value="0" autocomplete="off">
+                        <h2 class="text-2xl font-bold">Teleporter</h2>
+                    </div>
+                    
+                    <div class="grid grid-cols-3 gap-3 mb-4">
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">
+                                    <i class="fas fa-arrows-left-right text-red-400"></i> X
+                                </span>
+                            </label>
+                            <input id="input-teleport-x" type="number" placeholder="0" value="0" 
+                                class="input input-bordered w-full mt-1" autocomplete="off">
                         </div>
-                        <div class="w-20">
-                            <input id="input-teleport-z" class="w-full input input-neutral" type="number"
-                                placeholder="Z" value="0" autocomplete="off">
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">
+                                    <i class="fas fa-arrows-up-down text-green-400"></i> Y
+                                </span>
+                            </label>
+                            <input id="input-teleport-y" type="number" placeholder="0" value="0" 
+                                class="input input-bordered w-full mt-1" autocomplete="off">
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">
+                                    <i class="fas fa-up-down-left-right text-blue-400"></i> Z
+                                </span>
+                            </label>
+                            <input id="input-teleport-z" type="number" placeholder="0" value="0" 
+                                class="input input-bordered w-full mt-1" autocomplete="off">
                         </div>
                     </div>
-                    <div class="grid grid-cols-[repeat(2,max-content)] gap-x-3">
-                        <button id="btn-teleport" class="btn btn-primary mt-2">Teleport</button>
-                        <div id="teleport-response" class="grid items-center font-semibold"></div>
+                    
+                    <div class="flex items-center gap-3">
+                        <button id="btn-teleport" class="btn btn-primary flex-1 gap-2">
+                            <i class="fas fa-rocket"></i>
+                            Teleport Now
+                        </button>
+                        <div id="teleport-response" class="font-semibold"></div>
                     </div>
                 </div>
-                <!-- End Teleport -->
-                <!-- Start Level Loader -->
-                <div class="mt-4">
-                    <p class="text-lg font-semibold">Level Loader</p>
-                    <div class="w-full grid grid-cols-[40%_60%] gap-x-3 mt-2">
-                        <div>
-                            <p class="font-medium">Category</p>
-                            <select id="select-level-category" class="select mt-2"></select>
+
+                <!-- Level Loader Card -->
+                <div class="glass-card p-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center">
+                            <i class="fas fa-map text-secondary text-xl"></i>
                         </div>
-                        <div>
-                            <p class="font-medium">Level</p>
-                            <select id="select-level-level" class="select mt-2"></select>
+                        <h2 class="text-2xl font-bold">Level Loader</h2>
+                    </div>
+                    
+                    <div class="grid md:grid-cols-2 gap-4 mb-4">
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">
+                                    <i class="fas fa-folder"></i> Category
+                                </span>
+                            </label>
+                            <select id="select-level-category" class="select select-bordered w-full mt-1"></select>
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">
+                                    <i class="fas fa-layer-group"></i> Level
+                                </span>
+                            </label>
+                            <select id="select-level-level" class="select select-bordered w-full mt-1"></select>
                         </div>
                     </div>
-                    <div class="mt-2 flex items-center gap-x-3">
-                        <input id="checkbox-level-fade" class="checkbox" type="checkbox" checked autocomplete="off">
-                        <span>Enable Fade Effect</span>
+                    
+                    <div class="form-control mb-4">
+                        <label class="label cursor-pointer justify-start gap-3">
+                            <input id="checkbox-level-fade" type="checkbox" checked class="checkbox checkbox-primary" autocomplete="off">
+                            <span class="label-text">
+                                <i class="fas fa-wand-magic-sparkles text-purple-400"></i> Enable Fade Effect
+                            </span>
+                        </label>
                     </div>
-                    <button id="btn-load-level" class="btn btn-primary mt-4">Load Level</button>
+                    
+                    <button id="btn-load-level" class="btn btn-secondary w-full gap-2">
+                        <i class="fas fa-play"></i>
+                        Load Level
+                    </button>
                 </div>
-                <!-- End Level Loader -->
             </div>
-            <div>
-                <!-- Start Progression -->
-                <div>
-                    <div class="grid grid-cols-[min-content_auto] mt-2 gap-x-3">
-                        <p class="text-lg font-semibold">Progression</p>
-                        <p class="font-medium text-end">Current Level : <span id="current-level">None</span></p>
-                    </div>
-                    <div class="mt-2 grid gap-y-2">
-                        <div class="flex items-center gap-x-3">
-                            <input id="checkbox-auto-burn-candles" class="checkbox" type="checkbox" autocomplete="off">
-                            <span>Auto Burn Candles</span>
+
+            <!-- Right Column -->
+            <div class="space-y-6">
+                <!-- Progression Card -->
+                <div class="glass-card p-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
+                                <i class="fas fa-chart-line text-accent text-xl"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold">Progression</h2>
                         </div>
-                        <div class="flex items-center gap-x-3">
-                            <input id="checkbox-auto-burn-plants" class="checkbox" type="checkbox" autocomplete="off">
-                            <span>Auto Burn Plants</span>
-                        </div>
-                        <div class="flex items-center gap-x-3">
-                            <input id="checkbox-auto-burn-dyes" class="checkbox" type="checkbox" autocomplete="off">
-                            <span>Auto Burn Dyes</span>
+                        <div class="badge badge-lg badge-ghost gap-2">
+                            <i class="fas fa-location-dot"></i>
+                            <span id="current-level" class="font-semibold">None</span>
                         </div>
                     </div>
-                    <p class="font-medium mt-2">Semi CR</p>
-                    <div id="progression-positions"
-                        class="grid grid-cols-10 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-3 md:gap-2 lg:gap-5 mt-2">
+                    
+                    <!-- Auto Actions -->
+                    <div class="bg-base-200/50 rounded-lg p-4 mb-4">
+                        <h3 class="font-semibold mb-3 flex items-center gap-2">
+                            <i class="fas fa-robot text-info"></i>
+                            Auto Actions
+                        </h3>
+                        <div class="grid md:grid-cols-2 gap-2">
+                            <label class="label cursor-pointer justify-start gap-3">
+                                <input id="checkbox-auto-burn-candles" type="checkbox" class="checkbox checkbox-sm checkbox-info" autocomplete="off">
+                                <span class="label-text flex items-center gap-2">
+                                    <i class="fas fa-fire text-yellow-400"></i>
+                                    Auto Burn Candles
+                                </span>
+                            </label>
+                            <label class="label cursor-pointer justify-start gap-3">
+                                <input id="checkbox-auto-burn-plants" type="checkbox" class="checkbox checkbox-sm checkbox-success" autocomplete="off">
+                                <span class="label-text flex items-center gap-2">
+                                    <i class="fas fa-seedling text-green-400"></i>
+                                    Auto Burn Plants
+                                </span>
+                            </label>
+                            <label class="label cursor-pointer justify-start gap-3">
+                                <input id="checkbox-auto-burn-dyes" type="checkbox" class="checkbox checkbox-sm checkbox-error" autocomplete="off">
+                                <span class="label-text flex items-center gap-2">
+                                    <i class="fas fa-droplet text-red-400"></i>
+                                    Auto Burn Dyes
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Semi CR Section -->
+                    <div>
+                        <h3 class="font-semibold mb-3 flex items-center gap-2">
+                            <i class="fas fa-star text-warning"></i>
+                            Semi CR
+                        </h3>
+                        <div id="progression-positions" 
+                            class="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-6 xl:grid-cols-8 gap-2">
+                        </div>
                     </div>
                 </div>
-                <!-- End Progression -->
             </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-6 text-sm opacity-50">
+            <p>
+                <i class="fas fa-triangle-exclamation"></i> Use at your own risk
+            </p>
         </div>
     </div>
 </body>
